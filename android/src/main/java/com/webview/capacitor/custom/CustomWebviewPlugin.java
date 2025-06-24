@@ -1,5 +1,7 @@
 package com.webview.capacitor.custom;
 
+import android.content.Intent;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -18,5 +20,20 @@ public class CustomWebviewPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("value", implementation.echo(value));
         call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void openWebview(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null || url.isEmpty()) {
+            call.reject("URL is required");
+            return;
+        }
+
+        Intent intent = new Intent(getActivity(), CustomWebViewActivity.class);
+        intent.putExtra(CustomWebViewActivity.EXTRA_URL, url);
+        getActivity().startActivity(intent);
+
+        call.resolve();
     }
 }
