@@ -20,6 +20,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -38,8 +39,23 @@ public class CustomWebViewActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        webView = new WebView(this);
-        setContentView(webView);
+        setContentView(R.layout.activity_custom_webview);
+
+        webView = findViewById(R.id.webView);
+
+        Button btnBack = findViewById(R.id.btnBack);
+        Button btnForward = findViewById(R.id.btnForward);
+        Button btnReload = findViewById(R.id.btnReload);
+
+        btnBack.setOnClickListener(v -> {
+            if (webView.canGoBack()) webView.goBack();
+        });
+
+        btnForward.setOnClickListener(v -> {
+            if (webView.canGoForward()) webView.goForward();
+        });
+
+        btnReload.setOnClickListener(v -> webView.reload());
 
         WebView.setWebContentsDebuggingEnabled(true);
 
