@@ -30,8 +30,9 @@ public class CustomWebViewActivity extends AppCompatActivity {
         String url = getIntent().getStringExtra(EXTRA_URL);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
-        settings.setAllowFileAccess(true);
         settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override

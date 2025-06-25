@@ -4,7 +4,10 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".CustomWebViewActivity" />
+        <activity 
+            android:name=".CustomWebViewActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+        />
     
     </application>
 </manifest>
