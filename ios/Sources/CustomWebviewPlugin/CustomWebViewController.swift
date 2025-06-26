@@ -229,6 +229,14 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
                 var filename = url.lastPathComponent
                 var ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
+                // Si existe el parámetro 'name', úsalo como nombre de archivo
+                if let nameParam = url.valueOf("name"), !nameParam.isEmpty {
+                    print("[DEBUG] Parámetro name encontrado: \(nameParam)")
+                    filename = nameParam
+                    ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
+                }
+
+                // Si hay Content-Disposition, úsalo como prioridad
                 if let disposition = httpResponse.allHeaderFields["Content-Disposition"] as? String {
                     print("[DEBUG] Content-Disposition: \(disposition)")
                     let filenamePattern = "filename=\"?(.+?)\"?"
@@ -237,13 +245,7 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
                         ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
                     }
                 }
-                // Si no hay extensión en el path, intenta obtenerla del query string
-                if ext.isEmpty, let extFromQuery = url.valueOf("name")?.split(separator: ".").last?.lowercased() {
-                    print("[DEBUG] Usando extensión del query: \(extFromQuery)")
-                    ext = String(extFromQuery)
-                    filename += ".\(ext)"
-                }
-                // Si sigue sin extensión, fuerza .pdf por defecto
+                // Si no hay extensión, fuerza .pdf por defecto
                 if ext.isEmpty {
                     filename += ".pdf"
                 }
@@ -312,7 +314,7 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
 extension URL {
     func valueOf(_ queryParamaterName: String) -> String? {
-        guard let url = URLComponents(string: self.absoluteString) else { return nil }
-        return url.queryItems?.first(where: { $0.name == queryParamaterName })?.value
+        guard let components = URLComponents(url: self, resolvingAgainstBaseURL: false) else { return nil }
+        return components.queryItems?.first(where: { $0.name == queryParamaterName })?.value
     }
 }
