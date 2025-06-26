@@ -20,13 +20,50 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
         view.backgroundColor = .white
 
-        // Botón de cerrar
+        // Barra de botones
+        let buttonBar = UIStackView()
+        buttonBar.axis = .horizontal
+        buttonBar.alignment = .center
+        buttonBar.distribution = .equalSpacing
+        buttonBar.spacing = 12
+        buttonBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(buttonBar)
+
+        // Botón cerrar
         let closeButton = UIButton(type: .system)
         closeButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
         closeButton.tintColor = .black
-        closeButton.frame = CGRect(x: 16, y: 50, width: 32, height: 32)
         closeButton.addTarget(self, action: #selector(closeWebview), for: .touchUpInside)
-        view.addSubview(closeButton)
+        buttonBar.addArrangedSubview(closeButton)
+
+        // Botón atrás
+        let backButton = UIButton(type: .system)
+        backButton.setImage(UIImage(systemName: "chevron.left.circle.fill"), for: .normal)
+        backButton.tintColor = .black
+        backButton.addTarget(self, action: #selector(goBack), for: .touchUpInside)
+        buttonBar.addArrangedSubview(backButton)
+
+        // Botón adelante
+        let forwardButton = UIButton(type: .system)
+        forwardButton.setImage(UIImage(systemName: "chevron.right.circle.fill"), for: .normal)
+        forwardButton.tintColor = .black
+        forwardButton.addTarget(self, action: #selector(goForward), for: .touchUpInside)
+        buttonBar.addArrangedSubview(forwardButton)
+
+        // Botón recargar
+        let reloadButton = UIButton(type: .system)
+        reloadButton.setImage(UIImage(systemName: "arrow.clockwise.circle.fill"), for: .normal)
+        reloadButton.tintColor = .black
+        reloadButton.addTarget(self, action: #selector(reloadWebview), for: .touchUpInside)
+        buttonBar.addArrangedSubview(reloadButton)
+
+        // Constraints para la barra de botones
+        NSLayoutConstraint.activate([
+            buttonBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            buttonBar.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            buttonBar.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            buttonBar.heightAnchor.constraint(equalToConstant: 44)
+        ])
 
         // Configuración avanzada de WKWebView
         let webViewPrefs = WKPreferences()
@@ -39,11 +76,20 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
             webViewConf.defaultWebpagePreferences.allowsContentJavaScript = true
         }
 
-        webView = WKWebView(frame: CGRect(x: 0, y: 90, width: view.frame.width, height: view.frame.height - 90), configuration: webViewConf)
+        webView = WKWebView(frame: .zero, configuration: webViewConf)
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.scrollView.keyboardDismissMode = .onDrag
+        webView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(webView)
+
+        // Constraints para el WebView
+        NSLayoutConstraint.activate([
+            webView.topAnchor.constraint(equalTo: buttonBar.bottomAnchor, constant: 8),
+            webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
 
         print("[DEBUG] Cargando WebView con URL: \(url.absoluteString)")
         webView.load(URLRequest(url: url))
@@ -91,6 +137,22 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
     @objc func closeWebview() {
         print("[DEBUG] Botón cerrar presionado")
         self.dismiss(animated: true, completion: nil)
+    }
+
+    @objc func goBack() {
+        if webView.canGoBack {
+            webView.goBack()
+        }
+    }
+
+    @objc func goForward() {
+        if webView.canGoForward {
+            webView.goForward()
+        }
+    }
+
+    @objc func reloadWebview() {
+        webView.reload()
     }
 
     // MARK: - WKNavigationDelegate
