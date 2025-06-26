@@ -120,8 +120,6 @@ CustomWebview.openWebview({
 
 ## Notes
 
-- **Permissions must be declared in your app project**, not in the plugin itself.
-- If you install via npm, copy the above permission declarations into your native project files only if your use case requires them.
 - The plugin opens a fullscreen modal WebView with navigation controls.
 - Downloads on Android are saved to the public Downloads folder; on iOS, PDFs/images are previewed in-app.
 
