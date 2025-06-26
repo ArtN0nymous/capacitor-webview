@@ -27,7 +27,7 @@ npx cap sync
 ## Usage
 
 ```typescript
-import { CustomWebview } from 'capacitor-custom-webview-plugin';
+import { CustomWebview } from '@artn0nymous/capacitor-webview';
 
 // Open a webview with a given URL
 CustomWebview.openWebview({
