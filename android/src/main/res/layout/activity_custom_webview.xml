@@ -24,8 +24,8 @@
             app:iconGravity="start"
             app:iconPadding="0dp"
             android:layout_marginEnd="8dp"
-            android:contentDescription="Salir"
-            android:text="Salir" />
+            android:contentDescription="Close"
+            android:text="Close" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnBack"
@@ -37,7 +37,7 @@
             app:cornerRadius="16dp"
             app:iconGravity="start"
             app:iconPadding="0dp"
-            android:contentDescription="Atrás" />
+            android:contentDescription="Back" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnForward"
@@ -50,7 +50,7 @@
             app:iconGravity="start"
             app:iconPadding="0dp"
             android:layout_marginStart="8dp"
-            android:contentDescription="Adelante" />
+            android:contentDescription="Forward" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnReload"
@@ -63,7 +63,7 @@
             app:iconGravity="start"
             app:iconPadding="0dp"
             android:layout_marginStart="8dp"
-            android:contentDescription="Recargar" />
+            android:contentDescription="Reload" />
     </LinearLayout>
 
     <WebView

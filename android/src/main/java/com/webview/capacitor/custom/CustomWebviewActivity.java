@@ -154,21 +154,21 @@ public class CustomWebViewActivity extends AppCompatActivity {
 
                 String fileName = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype);
                 request.setTitle(fileName);
-                request.setDescription("Descargando archivo...");
+                request.setDescription("Downloading file...");
                 request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
 
                 DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
                 dm.enqueue(request);
 
-                Toast.makeText(CustomWebViewActivity.this, "Archivo guardado en Descargas", Toast.LENGTH_LONG).show();
+                Toast.makeText(CustomWebViewActivity.this, "File saved in Downloads", Toast.LENGTH_LONG).show();
             }
         });
 
         webView.loadUrl(url);
     }
 
-    // Manejo de resultados de archivos
+    // File result handling
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
@@ -208,7 +208,7 @@ public class CustomWebViewActivity extends AppCompatActivity {
                     && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
                 webView.reload();
             } else {
-                Toast.makeText(this, "Permisos necesarios para la cámara y el micrófono", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Camera and microphone permissions are required", Toast.LENGTH_SHORT).show();
             }
         }
     }

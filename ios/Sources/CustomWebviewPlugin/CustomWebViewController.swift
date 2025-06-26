@@ -16,7 +16,7 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("[DEBUG] viewDidLoad - Iniciando CustomWebviewViewController con URL: \(url.absoluteString)")
+        print("[DEBUG] viewDidLoad - Starting CustomWebviewViewController with URL: \(url.absoluteString)")
 
         view.backgroundColor = .white
 
@@ -164,17 +164,17 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
             return
         }
 
-        print("[DEBUG] Navegando a: \(url.absoluteString)")
+        print("[DEBUG] Navigating to: \(url.absoluteString)")
 
         if isDownloadableFile(url) {
-            print("[DEBUG] Detectado archivo descargable: \(url.lastPathComponent)")
+            print("[DEBUG] Detected downloadable file: \(url.lastPathComponent)")
             downloadFile(url)
             decisionHandler(.cancel)
             return
         }
 
         if url.path.contains("/api/prescription-pdf") {
-            print("[DEBUG] URL detectada como receta PDF: \(url.absoluteString)")
+            print("[DEBUG] URL detected as prescription PDF: \(url.absoluteString)")
             handlePrescriptionPdfDownload(webView: webView, url: url)
             decisionHandler(.cancel)
             return
@@ -204,14 +204,14 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
         let allowedExtensions = ["pdf", "jpeg", "jpg", "png"]
         // También intenta detectar extensión en el query string
         if ext.isEmpty, let extFromQuery = url.valueOf("name")?.split(separator: ".").last?.lowercased() {
-            print("[DEBUG] Extensión detectada en query: \(extFromQuery)")
+            print("[DEBUG] Extension detected in query: \(extFromQuery)")
             return allowedExtensions.contains(String(extFromQuery))
         }
         return allowedExtensions.contains(ext)
     }
 
     func handlePrescriptionPdfDownload(webView: WKWebView, url: URL) {
-        print("[DEBUG] Iniciando descarga de receta PDF")
+        print("[DEBUG] Starting prescription PDF download")
         let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
         cookieStore.getAllCookies { cookies in
             var request = URLRequest(url: url)
@@ -220,19 +220,19 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
             let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
                 if let error = error {
-                    print("[ERROR] Error al descargar receta: \(error)")
+                    print("[ERROR] Error downloading prescription: \(error)")
                     return
                 }
 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("[ERROR] Respuesta inválida")
+                    print("[ERROR] Invalid response")
                     return
                 }
 
-                print("[DEBUG] Código de estado HTTP: \(httpResponse.statusCode)")
+                print("[DEBUG] HTTP status code: \(httpResponse.statusCode)")
 
                 guard httpResponse.statusCode == 200, let data = data else {
-                    print("[ERROR] Datos inválidos o respuesta no 200")
+                    print("[ERROR] Invalid data or non-200 response")
                     return
                 }
 
@@ -249,10 +249,10 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
                     filename += ".pdf"
                 }
 
-                print("[DEBUG] Nombre final del archivo: \(filename)")
+                print("[DEBUG] Final file name: \(filename)")
                 if !data.starts(with: [0x25, 0x50, 0x44, 0x46]) {
                     let snippet = String(data: data.prefix(200), encoding: .utf8) ?? "\(data.prefix(20))"
-                    print("[ERROR] Primeros bytes del archivo: \(snippet)")
+                    print("[ERROR] First bytes of file: \(snippet)")
                     return
                 }
                 self.savePDF(data: data, filename: filename)
@@ -263,7 +263,7 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     func downloadFile(_ url: URL) {
-        print("[DEBUG] Iniciando descarga directa de archivo: \(url.absoluteString)")
+        print("[DEBUG] Starting direct file download: \(url.absoluteString)")
 
         let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
         cookieStore.getAllCookies { cookies in
@@ -273,19 +273,19 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
             let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
-                    print("[ERROR] Error en descarga directa: \(error)")
+                    print("[ERROR] Error in direct download: \(error)")
                     return
                 }
 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    print("[ERROR] Respuesta inválida")
+                    print("[ERROR] Invalid response")
                     return
                 }
 
-                print("[DEBUG] Código de estado HTTP: \(httpResponse.statusCode)")
+                print("[DEBUG] HTTP status code: \(httpResponse.statusCode)")
 
                 guard httpResponse.statusCode == 200, let data = data else {
-                    print("[ERROR] Datos inválidos o respuesta no 200")
+                    print("[ERROR] Invalid data or non-200 response")
                     return
                 }
 
@@ -312,7 +312,7 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
                     filename += ".pdf"
                 }
 
-                print("[DEBUG] Nombre final del archivo: \(filename)")
+                print("[DEBUG] Final file name: \(filename)")
                 self.savePDF(data: data, filename: filename)
             }
 
@@ -333,7 +333,7 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
             DispatchQueue.main.async {
                 let previewController = QLPreviewController()
                 previewController.dataSource = self
-                print("[DEBUG] Mostrando vista previa del PDF")
+                print("[DEBUG] Showing PDF preview")
                 self.present(previewController, animated: true, completion: nil)
             }
         } catch {
@@ -345,16 +345,16 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
     func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
         let count = lastDownloadedPDFURL != nil ? 1 : 0
-        print("[DEBUG] Archivos para previsualizar: \(count)")
+        print("[DEBUG] Files to preview: \(count)")
         return count
     }
 
     func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
         if let url = lastDownloadedPDFURL {
-            print("[DEBUG] Cargando archivo para preview: \(url.lastPathComponent)")
+            print("[DEBUG] Loading file for preview: \(url.lastPathComponent)")
             return url as QLPreviewItem
         }
-        print("[ERROR] No hay archivo para previsualizar")
+        print("[ERROR] No file to preview")
         return URL(fileURLWithPath: "") as QLPreviewItem
     }
 
