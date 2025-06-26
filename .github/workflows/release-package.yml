@@ -29,7 +29,10 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org/
-      - run: npm ci
+      - name: Clean install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
       - run: npm run build --if-present
       - run: npm publish --access public
         env:
@@ -47,7 +50,10 @@ jobs:
         with:
           node-version: 20
           registry-url: https://npm.pkg.github.com/
-      - run: npm ci
+      - name: Clean install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
       - run: npm run build --if-present
       - run: npm publish
         env:
