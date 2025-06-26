@@ -7,6 +7,7 @@ import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -27,6 +28,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.google.android.material.button.MaterialButton;
+
 public class CustomWebViewActivity extends AppCompatActivity {
 
     public static final String EXTRA_URL = "url";
@@ -42,22 +45,6 @@ public class CustomWebViewActivity extends AppCompatActivity {
         setContentView(R.layout.activity_custom_webview);
 
         webView = findViewById(R.id.webView);
-
-        Button btnBack = findViewById(R.id.btnBack);
-        Button btnForward = findViewById(R.id.btnForward);
-        Button btnReload = findViewById(R.id.btnReload);
-
-        btnBack.setOnClickListener(v -> {
-            if (webView.canGoBack()) webView.goBack();
-        });
-
-        btnForward.setOnClickListener(v -> {
-            if (webView.canGoForward()) webView.goForward();
-        });
-
-        btnReload.setOnClickListener(v -> webView.reload());
-
-        WebView.setWebContentsDebuggingEnabled(true);
 
         String url = getIntent().getStringExtra(EXTRA_URL);
         WebSettings settings = webView.getSettings();
@@ -122,6 +109,25 @@ public class CustomWebViewActivity extends AppCompatActivity {
         });
 
         webView.loadUrl(url);
+
+        String iconColor = getIntent().getStringExtra("iconColor");
+        if (iconColor == null || iconColor.isEmpty()) {
+            iconColor = "#000000";
+        }
+
+        int colorInt = Color.parseColor(iconColor);
+
+        MaterialButton btnBack = findViewById(R.id.btnBack);
+        MaterialButton btnForward = findViewById(R.id.btnForward);
+        MaterialButton btnReload = findViewById(R.id.btnReload);
+
+        btnBack.setIconTintResource(0);
+        btnForward.setIconTintResource(0);
+        btnReload.setIconTintResource(0);
+
+        btnBack.setIconTint(android.content.res.ColorStateList.valueOf(colorInt));
+        btnForward.setIconTint(android.content.res.ColorStateList.valueOf(colorInt));
+        btnReload.setIconTint(android.content.res.ColorStateList.valueOf(colorInt));
     }
 
     // Manejo de resultados de archivos
