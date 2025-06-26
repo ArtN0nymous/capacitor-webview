@@ -13,6 +13,7 @@ import android.os.Environment;
 import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -34,6 +35,14 @@ public class CustomWebViewActivity extends AppCompatActivity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 2;
     private WebView webView;
     private ValueCallback<Uri[]> mUploadMessage;
+
+    // Interfaz para recibir logs desde JS
+    public class NetworkLoggerInterface {
+        @JavascriptInterface
+        public void log(String type, String url, int status) {
+            Log.d("WEBVIEW", type.toUpperCase() + " response from: " + url + " - status: " + status);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,10 +78,43 @@ public class CustomWebViewActivity extends AppCompatActivity {
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
 
+        webView.addJavascriptInterface(new NetworkLoggerInterface(), "NetworkLogger");
+
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 return false;
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+
+                // Inyecta el JS para monitorear fetch y XHR
+                String js = "(function() {" +
+                        "const originalFetch = window.fetch;" +
+                        "window.fetch = function() {" +
+                        "  const url = arguments[0];" +
+                        "  return originalFetch.apply(this, arguments)" +
+                        "    .then(response => {" +
+                        "      window.NetworkLogger.log('fetch-response', url, response.status);" +
+                        "      return response;" +
+                        "    });" +
+                        "};" +
+                        "const originalXHROpen = XMLHttpRequest.prototype.open;" +
+                        "XMLHttpRequest.prototype.open = function(method, url) {" +
+                        "  this._url = url;" +
+                        "  return originalXHROpen.apply(this, arguments);" +
+                        "};" +
+                        "const originalXHRSend = XMLHttpRequest.prototype.send;" +
+                        "XMLHttpRequest.prototype.send = function() {" +
+                        "  this.addEventListener('loadend', function() {" +
+                        "    window.NetworkLogger.log('xhr-response', this._url, this.status);" +
+                        "  });" +
+                        "  return originalXHRSend.apply(this, arguments);" +
+                        "};" +
+                        "})();";
+                view.evaluateJavascript(js, null);
             }
         });
 
