@@ -1,8 +1,3 @@
 import Foundation
 
-@objc public class CustomWebview: NSObject {
-    @objc public func echo(_ value: String) -> String {
-        print(value)
-        return value
-    }
-}
+@objc public class CustomWebview: NSObject {}

@@ -137,17 +137,6 @@ Opens a native WebView with the specified URL.
 await CustomWebview.openWebview({ url: 'https://www.example.com' });
 ```
 
-### `echo(options: { value: string }): Promise<{ value: string }>`
-
-Test method to echo a value.
-
-#### Example
-
-```typescript
-const result = await CustomWebview.echo({ value: 'Hello' });
-console.log(result.value); // "Hello"
-```
-
 ---
 
 ## License

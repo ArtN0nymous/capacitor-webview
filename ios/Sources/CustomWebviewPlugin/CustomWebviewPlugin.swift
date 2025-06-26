@@ -10,17 +10,9 @@ public class CustomWebviewPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CustomWebviewPlugin"
     public let jsName = "CustomWebview"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "echo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openWebview", returnType: CAPPluginReturnPromise)
     ]
     private let implementation = CustomWebview()
-
-    @objc func echo(_ call: CAPPluginCall) {
-        let value = call.getString("value") ?? ""
-        call.resolve([
-            "value": implementation.echo(value)
-        ])
-    }
 
     @objc func openWebview(_ call: CAPPluginCall) {
         let urlString = call.getString("url") ?? ""

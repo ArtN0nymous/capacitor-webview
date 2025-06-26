@@ -21,16 +21,6 @@ public class CustomWebviewPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void echo(PluginCall call) {
-        Log.d(TAG, "[PLUGIN DEBUG] echo called");
-        String value = call.getString("value");
-
-        JSObject ret = new JSObject();
-        ret.put("value", implementation.echo(value));
-        call.resolve(ret);
-    }
-
-    @PluginMethod
     public void openWebview(PluginCall call) {
         Log.d(TAG, "[PLUGIN DEBUG] openWebview called");
         String url = call.getString("url");
