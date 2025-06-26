@@ -18,7 +18,7 @@ A Capacitor plugin to open a custom native WebView with navigation controls, fil
 ## Installation
 
 ```sh
-npm install capacitor-custom-webview-plugin
+npm install @artn0nymous/capacitor-webview'
 npx cap sync
 ```
 
