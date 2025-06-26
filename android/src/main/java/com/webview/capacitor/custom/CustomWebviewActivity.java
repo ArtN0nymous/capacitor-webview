@@ -46,6 +46,7 @@ public class CustomWebViewActivity extends AppCompatActivity {
         Button btnBack = findViewById(R.id.btnBack);
         Button btnForward = findViewById(R.id.btnForward);
         Button btnReload = findViewById(R.id.btnReload);
+        Button btnClose = findViewById(R.id.btnClose);
 
         btnBack.setOnClickListener(v -> {
             if (webView.canGoBack()) webView.goBack();
@@ -56,6 +57,7 @@ public class CustomWebViewActivity extends AppCompatActivity {
         });
 
         btnReload.setOnClickListener(v -> webView.reload());
+        btnClose.setOnClickListener(v -> finish());
 
         WebView.setWebContentsDebuggingEnabled(true);
 
