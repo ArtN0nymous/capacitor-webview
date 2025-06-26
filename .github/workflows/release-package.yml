@@ -12,8 +12,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-      - run: npm run build --if-present
+      - name: Clean install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+      - name: Build
+        run: npm run build --if-present
       - run: npm test
 
   publish-npm:
