@@ -25,7 +25,6 @@ public class CustomWebviewPlugin extends Plugin {
     @PluginMethod
     public void openWebview(PluginCall call) {
         String url = call.getString("url");
-        String iconColor = call.getString("iconColor", "#000000");
         if (url == null || url.isEmpty()) {
             call.reject("URL is required");
             return;
@@ -33,7 +32,6 @@ public class CustomWebviewPlugin extends Plugin {
 
         Intent intent = new Intent(getActivity(), CustomWebViewActivity.class);
         intent.putExtra(CustomWebViewActivity.EXTRA_URL, url);
-        intent.putExtra("iconColor", iconColor);
         getActivity().startActivity(intent);
 
         call.resolve();
