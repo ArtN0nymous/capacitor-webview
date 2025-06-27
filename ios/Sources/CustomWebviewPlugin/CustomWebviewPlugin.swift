@@ -16,26 +16,27 @@ public class CustomWebviewPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func openWebview(_ call: CAPPluginCall) {
         let urlString = call.getString("url") ?? ""
+        let debug = call.getBool("debug") ?? false
         guard let url = URL(string: urlString) else {
-            NSLog("[PLUGIN ERROR] Invalid URL: \(urlString)")
+            if debug { NSLog("[PLUGIN ERROR] Invalid URL: \(urlString)") }
             call.reject("URL is required")
             return
         }
 
         DispatchQueue.main.async {
-            NSLog("[PLUGIN DEBUG] Starting WebView presentation")
-            NSLog("[PLUGIN DEBUG] URL: \(url.absoluteString)")
+            if debug { NSLog("[PLUGIN DEBUG] Starting WebView presentation") }
+            if debug { NSLog("[PLUGIN DEBUG] URL: \(url.absoluteString)") }
             if let parentVC = self.bridge?.viewController {
-                NSLog("[PLUGIN DEBUG] parentVC found: \(parentVC)")
+                if debug { NSLog("[PLUGIN DEBUG] parentVC found: \(parentVC)") }
 
                 let webVC = CustomWebviewViewController(url: url)
                 webVC.modalPresentationStyle = .fullScreen
                 parentVC.present(webVC, animated: true)
 
-                NSLog("[PLUGIN DEBUG] Presentation requested successfully")
+                if debug { NSLog("[PLUGIN DEBUG] Presentation requested successfully") }
                 call.resolve()
             } else {
-                NSLog("[PLUGIN ERROR] No valid viewController found")
+                if debug { NSLog("[PLUGIN ERROR] No valid viewController found") }
                 call.reject("Could not present the webview")
             }
         }
