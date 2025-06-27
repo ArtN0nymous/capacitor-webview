@@ -22,17 +22,19 @@ public class CustomWebviewPlugin extends Plugin {
 
     @PluginMethod
     public void openWebview(PluginCall call) {
-        Log.d(TAG, "[PLUGIN DEBUG] openWebview called");
+        boolean debug = call.getBoolean("debug", false);
         String url = call.getString("url");
+        if (debug) Log.d(TAG, "[PLUGIN DEBUG] openWebview called");
         if (url == null || url.isEmpty()) {
-            Log.e(TAG, "[PLUGIN ERROR] URL is required");
+            if (debug) Log.e(TAG, "[PLUGIN ERROR] URL is required");
             call.reject("URL is required");
             return;
         }
 
-        Log.d(TAG, "[PLUGIN DEBUG] Opening CustomWebViewActivity with URL: " + url);
+        if (debug) Log.d(TAG, "[PLUGIN DEBUG] Opening CustomWebViewActivity with URL: " + url);
         Intent intent = new Intent(getActivity(), CustomWebViewActivity.class);
         intent.putExtra(CustomWebViewActivity.EXTRA_URL, url);
+        intent.putExtra("debug", debug);
         getActivity().startActivity(intent);
 
         call.resolve();

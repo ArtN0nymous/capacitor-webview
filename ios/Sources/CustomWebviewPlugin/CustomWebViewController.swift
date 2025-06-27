@@ -96,44 +96,46 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
         if debug { print("[DEBUG] Cargando WebView con URL: \(url.absoluteString)") }
         webView.load(URLRequest(url: url))
 
-        let js = """
-        (function() {
-            const originalFetch = window.fetch;
-            window.fetch = function() {
-                const url = arguments[0];
-                return originalFetch.apply(this, arguments)
-                    .then(response => {
-                        window.webkit.messageHandlers.networkLogger.postMessage({
-                            type: 'fetch-response',
-                            url: url,
-                            status: response.status
+        if debug {
+            let js = """
+            (function() {
+                const originalFetch = window.fetch;
+                window.fetch = function() {
+                    const url = arguments[0];
+                    return originalFetch.apply(this, arguments)
+                        .then(response => {
+                            window.webkit.messageHandlers.networkLogger.postMessage({
+                                type: 'fetch-response',
+                                url: url,
+                                status: response.status
+                            });
+                            return response;
                         });
-                        return response;
-                    });
-            };
+                };
 
-            const originalXHROpen = XMLHttpRequest.prototype.open;
-            XMLHttpRequest.prototype.open = function(method, url) {
-                this._url = url;
-                return originalXHROpen.apply(this, arguments);
-            };
-            const originalXHRSend = XMLHttpRequest.prototype.send;
-            XMLHttpRequest.prototype.send = function() {
-                this.addEventListener('loadend', function() {
-                    window.webkit.messageHandlers.networkLogger.postMessage({
-                        type: 'xhr-response',
-                        url: this._url,
-                        status: this.status
+                const originalXHROpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function(method, url) {
+                    this._url = url;
+                    return originalXHROpen.apply(this, arguments);
+                };
+                const originalXHRSend = XMLHttpRequest.prototype.send;
+                XMLHttpRequest.prototype.send = function() {
+                    this.addEventListener('loadend', function() {
+                        window.webkit.messageHandlers.networkLogger.postMessage({
+                            type: 'xhr-response',
+                            url: this._url,
+                            status: this.status
+                        });
                     });
-                });
-                return originalXHRSend.apply(this, arguments);
-            };
-        })();
-        """
+                    return originalXHRSend.apply(this, arguments);
+                };
+            })();
+            """
 
-        let userScript = WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: false)
-        webView.configuration.userContentController.addUserScript(userScript)
-        webView.configuration.userContentController.add(self, name: "networkLogger")
+            let userScript = WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+            webView.configuration.userContentController.addUserScript(userScript)
+            webView.configuration.userContentController.add(self, name: "networkLogger")
+        }
     }
 
     @objc func closeWebview() {

@@ -35,12 +35,13 @@ public class CustomWebViewActivity extends AppCompatActivity {
     private static final int FILE_CHOOSER_REQUEST_CODE = 2;
     private WebView webView;
     private ValueCallback<Uri[]> mUploadMessage;
+    private boolean debug = false;
 
-    // Interfaz para recibir logs desde JS
+    // Interface to log network requests
     public class NetworkLoggerInterface {
         @JavascriptInterface
         public void log(String type, String url, int status) {
-            Log.d("WEBVIEW", type.toUpperCase() + " response from: " + url + " - status: " + status);
+            if (debug) Log.d("WEBVIEW", type.toUpperCase() + " response from: " + url + " - status: " + status);
         }
     }
 
@@ -68,7 +69,12 @@ public class CustomWebViewActivity extends AppCompatActivity {
         btnReload.setOnClickListener(v -> webView.reload());
         btnClose.setOnClickListener(v -> finish());
 
-        WebView.setWebContentsDebuggingEnabled(true);
+        // Get debug mode from intent
+        debug = getIntent().getBooleanExtra("debug", false);
+
+        if (debug) Log.d("CustomWebViewActivity", "[DEBUG] onCreate - debug enabled");
+
+        WebView.setWebContentsDebuggingEnabled(debug);
 
         String url = getIntent().getStringExtra(EXTRA_URL);
         WebSettings settings = webView.getSettings();
@@ -90,31 +96,35 @@ public class CustomWebViewActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
 
-                // Inyecta el JS para monitorear fetch y XHR
-                String js = "(function() {" +
-                        "const originalFetch = window.fetch;" +
-                        "window.fetch = function() {" +
-                        "  const url = arguments[0];" +
-                        "  return originalFetch.apply(this, arguments)" +
-                        "    .then(response => {" +
-                        "      window.NetworkLogger.log('fetch-response', url, response.status);" +
-                        "      return response;" +
-                        "    });" +
-                        "};" +
-                        "const originalXHROpen = XMLHttpRequest.prototype.open;" +
-                        "XMLHttpRequest.prototype.open = function(method, url) {" +
-                        "  this._url = url;" +
-                        "  return originalXHROpen.apply(this, arguments);" +
-                        "};" +
-                        "const originalXHRSend = XMLHttpRequest.prototype.send;" +
-                        "XMLHttpRequest.prototype.send = function() {" +
-                        "  this.addEventListener('loadend', function() {" +
-                        "    window.NetworkLogger.log('xhr-response', this._url, this.status);" +
-                        "  });" +
-                        "  return originalXHRSend.apply(this, arguments);" +
-                        "};" +
-                        "})();";
-                view.evaluateJavascript(js, null);
+                if (debug) {
+                    // Inject JavaScript to log network requests
+                    String js = "(function() {" +
+                            "const originalFetch = window.fetch;" +
+                            "window.fetch = function() {" +
+                            "  const url = arguments[0];" +
+                            "  return originalFetch.apply(this, arguments)" +
+                            "    .then(response => {" +
+                            "      window.NetworkLogger.log('fetch-response', url, response.status);" +
+                            "      return response;" +
+                            "    });" +
+                            "};" +
+                            "const originalXHROpen = XMLHttpRequest.prototype.open;" +
+                            "XMLHttpRequest.prototype.open = function(method, url) {" +
+                            "  this._url = url;" +
+                            "  return originalXHROpen.apply(this, arguments);" +
+                            "};" +
+                            "const originalXHRSend = XMLHttpRequest.prototype.send;" +
+                            "XMLHttpRequest.prototype.send = function() {" +
+                            "  this.addEventListener('loadend', function() {" +
+                            "    window.NetworkLogger.log('xhr-response', this._url, this.status);" +
+                            "  });" +
+                            "  return originalXHRSend.apply(this, arguments);" +
+                            "};" +
+                            "})();";
+                    view.evaluateJavascript(js, null);
+
+                    Log.d("CustomWebViewActivity", "[DEBUG] onPageFinished: " + url);
+                }
             }
         });
 
@@ -137,6 +147,7 @@ public class CustomWebViewActivity extends AppCompatActivity {
                 intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
                 mUploadMessage = filePathCallback;
                 startActivityForResult(intent, FILE_CHOOSER_REQUEST_CODE);
+                if (debug) Log.d("CustomWebViewActivity", "[DEBUG] File chooser opened");
                 return true;
             }
         });
@@ -144,7 +155,7 @@ public class CustomWebViewActivity extends AppCompatActivity {
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-                // Descarga en carpeta pública usando DownloadManager
+                // Download file using DownloadManager
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
                 request.setMimeType(mimetype);
 
@@ -162,6 +173,8 @@ public class CustomWebViewActivity extends AppCompatActivity {
                 dm.enqueue(request);
 
                 Toast.makeText(CustomWebViewActivity.this, "File saved in Downloads", Toast.LENGTH_LONG).show();
+
+                if (debug) Log.d("CustomWebViewActivity", "[DEBUG] Download started: " + fileName);
             }
         });
 
