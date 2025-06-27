@@ -239,9 +239,11 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
                 var filename = "prescription.pdf"
                 if let disposition = httpResponse.allHeaderFields["Content-Disposition"] as? String {
                     print("[DEBUG] Content-Disposition: \(disposition)")
-                    let filenamePattern = "filename=\"?(.+?)\"?"
-                    if let range = disposition.range(of: filenamePattern, options: .regularExpression) {
-                        filename = String(disposition[range].dropFirst(9).dropLast())
+                    // search for filename="something.pdf" or filename=something.pdf
+                    let regex = try? NSRegularExpression(pattern: "filename=\"?([^\";]+)\"?", options: [])
+                    if let match = regex?.firstMatch(in: disposition, options: [], range: NSRange(location: 0, length: disposition.utf16.count)),
+                       let range = Range(match.range(at: 1), in: disposition) {
+                        filename = String(disposition[range])
                     }
                 }
 
@@ -371,6 +373,18 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
                 NSLog("[WEBVIEW] \(type.uppercased()) request to: \(url)")
             }
         }
+    }
+
+    // MARK: - WKUIDelegate
+
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+        if let url = navigationAction.request.url {
+            print("[DEBUG] Intercepted window.open or target=_blank: \(url.absoluteString)")
+            // Load the URL in the existing webView
+            webView.load(URLRequest(url: url))
+        }
+        // Return nil to prevent opening a new window
+        return nil
     }
 }
 
