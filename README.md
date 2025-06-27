@@ -31,7 +31,8 @@ import { CustomWebview } from '@artn0nymous/capacitor-webview';
 
 // Open a webview with a given URL
 CustomWebview.openWebview({
-  url: 'https://www.example.com'
+  url: 'https://www.example.com',
+  debug: true // Optional: enables native network and event logging for debugging
 });
 ```
 
@@ -127,14 +128,17 @@ CustomWebview.openWebview({
 
 ## API
 
-### `openWebview(options: { url: string }): Promise<void>`
+### `openWebview(options: { url: string, debug?: boolean }): Promise<void>`
 
 Opens a native WebView with the specified URL.
+
+- `url` (**string**, required): The URL to load.
+- `debug` (**boolean**, optional): If `true`, enables native logging of network requests and events (useful for debugging).
 
 #### Example
 
 ```typescript
-await CustomWebview.openWebview({ url: 'https://www.example.com' });
+await CustomWebview.openWebview({ url: 'https://www.example.com', debug: true });
 ```
 
 ---
