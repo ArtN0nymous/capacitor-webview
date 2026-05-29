@@ -8,14 +8,20 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
     var lastDownloadedPDFURL: URL?
     var debug: Bool = false
     var enableCookies: Bool = false
+    var fullscreen: Bool = false
     var onClose: (() -> Void)?
     private var didNotifyClose = false
 
-    init(url: URL, debug: Bool = false, enableCookies: Bool = false) {
+    init(url: URL, debug: Bool = false, enableCookies: Bool = false, fullscreen: Bool = false) {
         self.url = url
         self.debug = debug
         self.enableCookies = enableCookies
+        self.fullscreen = fullscreen
         super.init(nibName: nil, bundle: nil)
+    }
+
+    override var prefersStatusBarHidden: Bool {
+        return fullscreen
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -105,6 +111,10 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
         if debug { print("[DEBUG] Cargando WebView con URL: \(url.absoluteString)") }
         webView.load(URLRequest(url: url))
+
+        if fullscreen {
+            setNeedsStatusBarAppearanceUpdate()
+        }
 
         if debug {
             let js = """

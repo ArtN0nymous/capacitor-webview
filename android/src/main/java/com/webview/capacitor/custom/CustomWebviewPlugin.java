@@ -51,6 +51,7 @@ public class CustomWebviewPlugin extends Plugin {
         intent.putExtra(CustomWebViewActivity.EXTRA_URL, url);
         intent.putExtra("debug", debug);
         intent.putExtra(CustomWebViewActivity.EXTRA_ENABLE_COOKIES, enableCookies);
+        intent.putExtra(CustomWebViewActivity.EXTRA_FULLSCREEN, call.getBoolean("fullscreen", false));
         getActivity().startActivity(intent);
 
         call.resolve();

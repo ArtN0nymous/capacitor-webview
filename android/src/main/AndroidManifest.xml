@@ -3,6 +3,7 @@
         <activity
             android:name="com.webview.capacitor.custom.CustomWebViewActivity"
             android:exported="false"
-            android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+            android:theme="@style/Theme.CustomWebview" />
     </application>
 </manifest>

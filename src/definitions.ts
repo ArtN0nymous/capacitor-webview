@@ -10,6 +10,11 @@ export interface OpenWebviewOptions {
    * @default false
    */
   enableCookies?: boolean;
+  /**
+   * Hide the status bar for an immersive fullscreen experience.
+   * @default false
+   */
+  fullscreen?: boolean;
 }
 
 export interface WebviewClosedEvent {

@@ -8,9 +8,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
@@ -27,17 +29,22 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 public class CustomWebViewActivity extends AppCompatActivity {
 
     public static final String EXTRA_URL = "url";
     public static final String EXTRA_ENABLE_COOKIES = "enableCookies";
+    public static final String EXTRA_FULLSCREEN = "fullscreen";
     private static final int CAMERA_AND_MICROPHONE_PERMISSION_CODE = 1;
     private static final int FILE_CHOOSER_REQUEST_CODE = 2;
     private WebView webView;
     private ValueCallback<Uri[]> mUploadMessage;
     private boolean debug = false;
     private boolean enableCookies = false;
+    private boolean fullscreen = false;
 
     // Interface to log network requests
     public class NetworkLoggerInterface {
@@ -50,6 +57,12 @@ public class CustomWebViewActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        debug = getIntent().getBooleanExtra("debug", false);
+        enableCookies = getIntent().getBooleanExtra(EXTRA_ENABLE_COOKIES, false);
+        fullscreen = getIntent().getBooleanExtra(EXTRA_FULLSCREEN, false);
+
+        applyWindowAppearance(fullscreen);
 
         setContentView(R.layout.activity_custom_webview);
 
@@ -71,15 +84,48 @@ public class CustomWebViewActivity extends AppCompatActivity {
         btnReload.setOnClickListener(v -> webView.reload());
         btnClose.setOnClickListener(v -> finish());
 
-        // Get options from intent
-        debug = getIntent().getBooleanExtra("debug", false);
-        enableCookies = getIntent().getBooleanExtra(EXTRA_ENABLE_COOKIES, false);
-
-        if (debug) Log.d("CustomWebViewActivity", "[DEBUG] onCreate - debug enabled, enableCookies=" + enableCookies);
+        if (debug) {
+            Log.d("CustomWebViewActivity", "[DEBUG] onCreate - debug=" + debug
+                    + ", enableCookies=" + enableCookies + ", fullscreen=" + fullscreen);
+        }
 
         WebView.setWebContentsDebuggingEnabled(debug);
 
         String url = getIntent().getStringExtra(EXTRA_URL);
+        configureWebView();
+
+        if (savedInstanceState != null) {
+            webView.restoreState(savedInstanceState);
+            if (debug) Log.d("CustomWebViewActivity", "[DEBUG] Restored WebView state");
+        } else if (url != null && !url.isEmpty()) {
+            webView.loadUrl(url);
+        }
+    }
+
+    private void applyWindowAppearance(boolean fullscreen) {
+        Window window = getWindow();
+        WindowInsetsControllerCompat insetsController =
+                WindowCompat.getInsetsController(window, window.getDecorView());
+
+        if (fullscreen) {
+            WindowCompat.setDecorFitsSystemWindows(window, false);
+            if (insetsController != null) {
+                insetsController.hide(WindowInsetsCompat.Type.statusBars());
+                insetsController.setSystemBarsBehavior(
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                );
+            }
+            return;
+        }
+
+        window.setStatusBarColor(Color.WHITE);
+        if (insetsController != null) {
+            insetsController.show(WindowInsetsCompat.Type.statusBars());
+            insetsController.setAppearanceLightStatusBars(true);
+        }
+    }
+
+    private void configureWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(enableCookies);
@@ -174,8 +220,22 @@ public class CustomWebViewActivity extends AppCompatActivity {
                 startFileDownload(url, userAgent, contentDisposition, mimetype);
             }
         });
+    }
 
-        webView.loadUrl(url);
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (webView != null) {
+            webView.saveState(outState);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (webView != null) {
+            webView.onResume();
+        }
     }
 
     private boolean shouldDownloadPdfFromUrl(Uri uri) {
@@ -258,6 +318,9 @@ public class CustomWebViewActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        if (webView != null) {
+            webView.onPause();
+        }
         if (enableCookies) {
             CookieManager.getInstance().flush();
         }

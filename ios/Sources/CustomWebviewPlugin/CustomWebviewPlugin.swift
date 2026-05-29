@@ -18,6 +18,7 @@ public class CustomWebviewPlugin: CAPPlugin, CAPBridgedPlugin {
         let urlString = call.getString("url") ?? ""
         let debug = call.getBool("debug") ?? false
         let enableCookies = call.getBool("enableCookies") ?? false
+        let fullscreen = call.getBool("fullscreen") ?? false
         guard let url = URL(string: urlString) else {
             if debug { NSLog("[PLUGIN ERROR] Invalid URL: \(urlString)") }
             call.reject("URL is required")
@@ -30,7 +31,12 @@ public class CustomWebviewPlugin: CAPPlugin, CAPBridgedPlugin {
             if let parentVC = self.bridge?.viewController {
                 if debug { NSLog("[PLUGIN DEBUG] parentVC found: \(parentVC)") }
 
-                let webVC = CustomWebviewViewController(url: url, debug: debug, enableCookies: enableCookies)
+                let webVC = CustomWebviewViewController(
+                    url: url,
+                    debug: debug,
+                    enableCookies: enableCookies,
+                    fullscreen: fullscreen
+                )
                 webVC.modalPresentationStyle = .fullScreen
                 webVC.onClose = { [weak self] in
                     self?.notifyListeners("webviewClosed", data: [:])

@@ -14,6 +14,9 @@ A Capacitor 7 plugin to open a custom native WebView with navigation controls, f
 - Image download and in-app preview (iOS QuickLook)
 - File upload (camera, gallery, files) on Android
 - Network request monitoring when `debug` is enabled (XHR/fetch logs)
+- **Fullscreen mode** (`fullscreen`) to hide the status bar
+- **White status bar** on Android by default (avoids inheriting the app theme color)
+- **Rotation-safe navigation** on Android: keeps the current URL after redirects (magic links, OAuth)
 - Fullscreen modal presentation (iOS) / dedicated activity (Android)
 
 ---
@@ -44,6 +47,7 @@ await CustomWebview.openWebview({
   url: 'https://www.example.com',
   debug: true,           // optional: native network/event logs
   enableCookies: true,   // optional: persistent cookies & session (login/OAuth)
+  fullscreen: false,     // optional: hide status bar (default: false)
 });
 
 // Optional: remove listener when no longer needed
@@ -58,10 +62,27 @@ Enable cookies so redirects can set session cookies and later requests stay auth
 await CustomWebview.openWebview({
   url: 'https://your-api.com/auth/start',
   enableCookies: true,
+  fullscreen: true,    // hide status bar
 });
 ```
 
 When `enableCookies` is `false` (default), the webview uses an isolated session (iOS non-persistent store; Android without third-party cookies / DOM storage).
+
+### One-time links and screen rotation (Android)
+
+When you open a single-use URL that redirects (magic links, OAuth, signed tokens):
+
+1. The webview loads the initial URL once.
+2. The server redirects to the authenticated route.
+3. **Rotating the device does not reload the original URL** — the webview keeps the current page and only reflows the layout to the new dimensions.
+
+This is handled with `configChanges` on the activity and WebView state save/restore as a fallback. No full page refresh occurs on orientation change.
+
+### Fullscreen and status bar (Android)
+
+By default (`fullscreen: false`), the webview activity uses a **white status bar** with dark icons instead of the host app's theme color (often purple in Material themes).
+
+With `fullscreen: true`, the status bar is hidden for an immersive experience. Swipe from the top edge to reveal it temporarily.
 
 ---
 
@@ -76,6 +97,7 @@ Opens the native WebView.
 | `url` | `string` | — | **Required.** URL to load. |
 | `debug` | `boolean` | `false` | Enables native logging of navigation and network events. |
 | `enableCookies` | `boolean` | `false` | Enables persistent cookies, shared cookie jar, and session storage. Use for login/OAuth. |
+| `fullscreen` | `boolean` | `false` | Hides the status bar for an immersive view. When `false` on Android, the status bar uses a white background instead of the app theme color. |
 
 ### `addListener('webviewClosed', listener): Promise<PluginListenerHandle>`
 
@@ -118,14 +140,17 @@ Add only what your web content needs in `android/app/src/main/AndroidManifest.xm
 
 ### Activity declaration
 
-The plugin registers `CustomWebViewActivity` in its own manifest. If you use a custom manifest merge, ensure this activity is available:
+The plugin registers `CustomWebViewActivity` in its own manifest (theme, orientation handling, and `exported="false"` are included). Manual declaration is only needed if manifest merge is disabled in your app:
 
 ```xml
 <activity
     android:name="com.webview.capacitor.custom.CustomWebViewActivity"
     android:exported="false"
-    android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
+    android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|uiMode"
+    android:theme="@style/Theme.CustomWebview" />
 ```
+
+> **Note:** `Theme.CustomWebview` is defined inside the plugin. Do not reference the host app theme here.
 
 ---
 
@@ -154,10 +179,23 @@ Add only the keys your web content needs in `ios/App/App/Info.plist`:
 | File upload | `CAMERA`, `RECORD_AUDIO`, storage | Camera / mic / photo library usage descriptions |
 | File download | Storage (Downloads folder) | QuickLook (in-app) |
 | Cookies / session | `enableCookies: true` | `enableCookies: true` |
+| Fullscreen | `fullscreen: true` | `fullscreen: true` (`prefersStatusBarHidden`) |
 
 ---
 
 ## Changelog
+
+### 1.1.2
+
+- `fullscreen` option to hide the status bar (Android and iOS)
+- Android: white status bar by default instead of the host app theme color
+- Android: fix rotation reloading expired one-time URLs — preserves current page after redirect
+- Android: `Theme.CustomWebview` and `configChanges` for orientation handling
+- README documentation updates
+
+### 1.1.1
+
+- README documentation for v1.1.0 API
 
 ### 1.1.0
 
