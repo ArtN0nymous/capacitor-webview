@@ -7,10 +7,14 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
     var webView: WKWebView!
     var lastDownloadedPDFURL: URL?
     var debug: Bool = false
+    var enableCookies: Bool = false
+    var onClose: (() -> Void)?
+    private var didNotifyClose = false
 
-    init(url: URL, debug: Bool = false) {
+    init(url: URL, debug: Bool = false, enableCookies: Bool = false) {
         self.url = url
         self.debug = debug
+        self.enableCookies = enableCookies
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -73,9 +77,15 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
         let webViewConf = WKWebViewConfiguration()
         webViewConf.preferences = webViewPrefs
+        webViewConf.websiteDataStore = enableCookies ? .default() : .nonPersistent()
         webViewConf.allowsInlineMediaPlayback = true
         if #available(iOS 14.0, *) {
             webViewConf.defaultWebpagePreferences.allowsContentJavaScript = true
+        }
+
+        if debug {
+            let storeType = enableCookies ? "default (persistent, shared)" : "nonPersistent (isolated)"
+            print("[DEBUG] Cookie store: \(storeType)")
         }
 
         webView = WKWebView(frame: .zero, configuration: webViewConf)
@@ -140,7 +150,22 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
     @objc func closeWebview() {
         if debug { print("[DEBUG] Botón cerrar presionado") }
-        self.dismiss(animated: true, completion: nil)
+        dismiss(animated: true) { [weak self] in
+            self?.notifyCloseIfNeeded()
+        }
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if isBeingDismissed {
+            notifyCloseIfNeeded()
+        }
+    }
+
+    private func notifyCloseIfNeeded() {
+        guard !didNotifyClose else { return }
+        didNotifyClose = true
+        onClose?()
     }
 
     @objc func goBack() {

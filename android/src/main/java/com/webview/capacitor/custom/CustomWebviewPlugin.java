@@ -13,6 +13,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class CustomWebviewPlugin extends Plugin {
 
     private static final String TAG = "CustomWebviewPlugin";
+    private static CustomWebviewPlugin instance;
     private CustomWebview implementation = new CustomWebview();
 
     public CustomWebviewPlugin() {
@@ -20,9 +21,23 @@ public class CustomWebviewPlugin extends Plugin {
         Log.d(TAG, "[PLUGIN DEBUG] CustomWebviewPlugin initialized");
     }
 
+    @Override
+    public void load() {
+        instance = this;
+    }
+
+    static CustomWebviewPlugin getInstance() {
+        return instance;
+    }
+
+    void fireWebviewClosedEvent() {
+        notifyListeners("webviewClosed", new JSObject());
+    }
+
     @PluginMethod
     public void openWebview(PluginCall call) {
         boolean debug = call.getBoolean("debug", false);
+        boolean enableCookies = call.getBoolean("enableCookies", false);
         String url = call.getString("url");
         if (debug) Log.d(TAG, "[PLUGIN DEBUG] openWebview called");
         if (url == null || url.isEmpty()) {
@@ -35,6 +50,7 @@ public class CustomWebviewPlugin extends Plugin {
         Intent intent = new Intent(getActivity(), CustomWebViewActivity.class);
         intent.putExtra(CustomWebViewActivity.EXTRA_URL, url);
         intent.putExtra("debug", debug);
+        intent.putExtra(CustomWebViewActivity.EXTRA_ENABLE_COOKIES, enableCookies);
         getActivity().startActivity(intent);
 
         call.resolve();

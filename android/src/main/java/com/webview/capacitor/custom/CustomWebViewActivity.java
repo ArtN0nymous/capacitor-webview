@@ -31,11 +31,13 @@ import androidx.core.app.ActivityCompat;
 public class CustomWebViewActivity extends AppCompatActivity {
 
     public static final String EXTRA_URL = "url";
+    public static final String EXTRA_ENABLE_COOKIES = "enableCookies";
     private static final int CAMERA_AND_MICROPHONE_PERMISSION_CODE = 1;
     private static final int FILE_CHOOSER_REQUEST_CODE = 2;
     private WebView webView;
     private ValueCallback<Uri[]> mUploadMessage;
     private boolean debug = false;
+    private boolean enableCookies = false;
 
     // Interface to log network requests
     public class NetworkLoggerInterface {
@@ -69,20 +71,25 @@ public class CustomWebViewActivity extends AppCompatActivity {
         btnReload.setOnClickListener(v -> webView.reload());
         btnClose.setOnClickListener(v -> finish());
 
-        // Get debug mode from intent
+        // Get options from intent
         debug = getIntent().getBooleanExtra("debug", false);
+        enableCookies = getIntent().getBooleanExtra(EXTRA_ENABLE_COOKIES, false);
 
-        if (debug) Log.d("CustomWebViewActivity", "[DEBUG] onCreate - debug enabled");
+        if (debug) Log.d("CustomWebViewActivity", "[DEBUG] onCreate - debug enabled, enableCookies=" + enableCookies);
 
         WebView.setWebContentsDebuggingEnabled(debug);
 
         String url = getIntent().getStringExtra(EXTRA_URL);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
+        settings.setDomStorageEnabled(enableCookies);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        cookieManager.setAcceptThirdPartyCookies(webView, enableCookies);
 
         webView.addJavascriptInterface(new NetworkLoggerInterface(), "NetworkLogger");
 
@@ -206,6 +213,25 @@ public class CustomWebViewActivity extends AppCompatActivity {
             mUploadMessage.onReceiveValue(results);
             mUploadMessage = null;
         }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (enableCookies) {
+            CookieManager.getInstance().flush();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (isFinishing()) {
+            CustomWebviewPlugin plugin = CustomWebviewPlugin.getInstance();
+            if (plugin != null) {
+                plugin.fireWebviewClosedEvent();
+            }
+        }
+        super.onDestroy();
     }
 
     private void requestCameraAndMicrophonePermission() {

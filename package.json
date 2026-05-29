@@ -13,7 +13,7 @@
     "ios/Sources",
     "ios/Tests",
     "Package.swift",
-    "Artn0nymousCapacitorWebview.podspec"
+    "CapacitorWebview.podspec"
   ],
   "author": "Ramón Valdez",
   "license": "MIT",

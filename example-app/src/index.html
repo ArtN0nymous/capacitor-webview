@@ -8,17 +8,50 @@
       content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <meta name="format-detection" content="telephone=no" />
+    <style>
+      main {
+        font-family: system-ui, sans-serif;
+        padding: 1.5rem;
+        max-width: 480px;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+        font-weight: 600;
+      }
+      input[type='text'] {
+        width: 100%;
+        margin-top: 0.25rem;
+        padding: 0.5rem;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 1rem;
+        padding: 0.75rem 1.25rem;
+        font-size: 1rem;
+      }
+      #status {
+        margin-top: 1rem;
+        color: #333;
+      }
+    </style>
   </head>
   <body>
     <main>
-      <h1>Capacitor Test Plugin Project</h1>
-      <p>
-        This project can be used to test out the functionality of your plugin. Nothing in the
-        <em>example-app/</em> folder will be published to npm when using this template, so you can create away!
-      </p>
-      <label for="echoInput">Echo Text:</label>
-      <input type="text" id="echoInput" name="echoInput" value="Hello World!" />
-      <button onclick="testEcho()">Click Me!</button>
+      <h1>Custom Webview Plugin</h1>
+      <p>Prueba local del plugin <code>capacitor-webview</code>.</p>
+
+      <label for="urlInput">URL</label>
+      <input type="text" id="urlInput" name="urlInput" value="https://example.com" />
+
+      <label>
+        <input type="checkbox" id="enableCookies" />
+        enableCookies (sesión / OAuth)
+      </label>
+
+      <button onclick="openTestWebview()">Abrir WebView</button>
+
+      <p id="status">Listo</p>
     </main>
 
     <script src="./js/example.js" type="module"></script>
