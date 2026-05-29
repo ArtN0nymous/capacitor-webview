@@ -187,6 +187,14 @@ Add only the keys your web content needs in `ios/App/App/Info.plist`:
 
 ## Changelog
 
+### 1.1.3
+
+- Android `fullscreen`: hides both status and navigation bars (true immersive mode)
+- Android `fullscreen`: restores immersive mode on resume and window focus
+- Android non-fullscreen: content inset below system bars (no overlap with nav buttons)
+- Android non-fullscreen: white navigation bar with dark icons
+- README: fullscreen and system bars documentation
+
 ### 1.1.2
 
 - `fullscreen` option to hide the status bar (Android and iOS)
