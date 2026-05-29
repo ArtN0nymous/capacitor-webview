@@ -11,7 +11,9 @@ export interface OpenWebviewOptions {
    */
   enableCookies?: boolean;
   /**
-   * Hide the status bar for an immersive fullscreen experience.
+   * Immersive fullscreen: hides the status bar (iOS) or both the status and
+   * navigation bars (Android). On Android, swipe from the screen edge to
+   * reveal system bars temporarily.
    * @default false
    */
   fullscreen?: boolean;

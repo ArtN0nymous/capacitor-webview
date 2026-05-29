@@ -12,6 +12,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
@@ -29,6 +30,8 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -65,6 +68,7 @@ public class CustomWebViewActivity extends AppCompatActivity {
         applyWindowAppearance(fullscreen);
 
         setContentView(R.layout.activity_custom_webview);
+        applySystemBarInsets();
 
         webView = findViewById(R.id.webView);
 
@@ -110,7 +114,7 @@ public class CustomWebViewActivity extends AppCompatActivity {
         if (fullscreen) {
             WindowCompat.setDecorFitsSystemWindows(window, false);
             if (insetsController != null) {
-                insetsController.hide(WindowInsetsCompat.Type.statusBars());
+                insetsController.hide(WindowInsetsCompat.Type.systemBars());
                 insetsController.setSystemBarsBehavior(
                         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 );
@@ -118,10 +122,34 @@ public class CustomWebViewActivity extends AppCompatActivity {
             return;
         }
 
+        WindowCompat.setDecorFitsSystemWindows(window, true);
         window.setStatusBarColor(Color.WHITE);
+        window.setNavigationBarColor(Color.WHITE);
         if (insetsController != null) {
-            insetsController.show(WindowInsetsCompat.Type.statusBars());
+            insetsController.show(WindowInsetsCompat.Type.systemBars());
             insetsController.setAppearanceLightStatusBars(true);
+            insetsController.setAppearanceLightNavigationBars(true);
+        }
+    }
+
+    private void applySystemBarInsets() {
+        View rootLayout = findViewById(R.id.rootLayout);
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (view, windowInsets) -> {
+            if (fullscreen) {
+                view.setPadding(0, 0, 0, 0);
+                return windowInsets;
+            }
+
+            Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+            view.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+            return windowInsets;
+        });
+        ViewCompat.requestApplyInsets(rootLayout);
+    }
+
+    private void restoreImmersiveMode() {
+        if (fullscreen) {
+            applyWindowAppearance(true);
         }
     }
 
@@ -233,8 +261,17 @@ public class CustomWebViewActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        restoreImmersiveMode();
         if (webView != null) {
             webView.onResume();
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            restoreImmersiveMode();
         }
     }
 

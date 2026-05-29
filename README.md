@@ -78,11 +78,13 @@ When you open a single-use URL that redirects (magic links, OAuth, signed tokens
 
 This is handled with `configChanges` on the activity and WebView state save/restore as a fallback. No full page refresh occurs on orientation change.
 
-### Fullscreen and status bar (Android)
+### Fullscreen and system bars (Android)
 
-By default (`fullscreen: false`), the webview activity uses a **white status bar** with dark icons instead of the host app's theme color (often purple in Material themes).
+By default (`fullscreen: false`), the webview activity uses a **white status bar** and **white navigation bar** with dark icons instead of the host app's theme color (often purple in Material themes). Content is padded so it does not sit under the system bars.
 
-With `fullscreen: true`, the status bar is hidden for an immersive experience. Swipe from the top edge to reveal it temporarily.
+With `fullscreen: true`, both the **status bar** and **navigation bar** (back/home/recents buttons) are hidden for a true immersive experience. Swipe from the top or bottom edge to reveal them temporarily. The mode is restored automatically when the activity regains focus.
+
+On iOS, `fullscreen: true` only hides the status bar; the home indicator at the bottom remains visible (system requirement for non-game apps).
 
 ---
 
@@ -97,7 +99,7 @@ Opens the native WebView.
 | `url` | `string` | — | **Required.** URL to load. |
 | `debug` | `boolean` | `false` | Enables native logging of navigation and network events. |
 | `enableCookies` | `boolean` | `false` | Enables persistent cookies, shared cookie jar, and session storage. Use for login/OAuth. |
-| `fullscreen` | `boolean` | `false` | Hides the status bar for an immersive view. When `false` on Android, the status bar uses a white background instead of the app theme color. |
+| `fullscreen` | `boolean` | `false` | Immersive mode: hides status bar (iOS) or status + navigation bars (Android). When `false` on Android, system bars stay visible with a white background and content is inset below them. |
 
 ### `addListener('webviewClosed', listener): Promise<PluginListenerHandle>`
 
