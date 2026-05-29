@@ -96,6 +96,15 @@ public class CustomWebViewActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (request.isForMainFrame() && shouldDownloadPdfFromUrl(request.getUrl())) {
+                    startFileDownload(
+                            request.getUrl().toString(),
+                            request.getRequestHeaders().get("User-Agent"),
+                            null,
+                            "application/pdf"
+                    );
+                    return true;
+                }
                 return false;
             }
 
@@ -162,30 +171,61 @@ public class CustomWebViewActivity extends AppCompatActivity {
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-                // Download file using DownloadManager
-                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                request.setMimeType(mimetype);
-
-                String cookies = CookieManager.getInstance().getCookie(url);
-                request.addRequestHeader("cookie", cookies);
-                request.addRequestHeader("User-Agent", userAgent);
-
-                String fileName = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype);
-                request.setTitle(fileName);
-                request.setDescription("Downloading file...");
-                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
-                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-
-                DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-                dm.enqueue(request);
-
-                Toast.makeText(CustomWebViewActivity.this, "File saved in Downloads", Toast.LENGTH_LONG).show();
-
-                if (debug) Log.d("CustomWebViewActivity", "[DEBUG] Download started: " + fileName);
+                startFileDownload(url, userAgent, contentDisposition, mimetype);
             }
         });
 
         webView.loadUrl(url);
+    }
+
+    private boolean shouldDownloadPdfFromUrl(Uri uri) {
+        if (uri == null) {
+            return false;
+        }
+
+        String path = uri.getLastPathSegment();
+        if (path != null && path.toLowerCase().endsWith(".pdf")) {
+            return true;
+        }
+
+        for (String queryKey : new String[]{"filename", "file", "name", "download"}) {
+            String value = uri.getQueryParameter(queryKey);
+            if (value != null && value.toLowerCase().endsWith(".pdf")) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void startFileDownload(String url, String userAgent, String contentDisposition, String mimetype) {
+        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+        if (mimetype != null && !mimetype.isEmpty()) {
+            request.setMimeType(mimetype);
+        }
+
+        String cookies = CookieManager.getInstance().getCookie(url);
+        if (cookies != null) {
+            request.addRequestHeader("cookie", cookies);
+        }
+        if (userAgent != null) {
+            request.addRequestHeader("User-Agent", userAgent);
+        } else {
+            request.addRequestHeader("User-Agent", webView.getSettings().getUserAgentString());
+        }
+
+        String fileName = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype);
+        request.setTitle(fileName);
+        request.setDescription("Downloading file...");
+        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+
+        DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        dm.enqueue(request);
+
+        Toast.makeText(CustomWebViewActivity.this, "File saved in Downloads", Toast.LENGTH_LONG).show();
+
+        if (debug) Log.d("CustomWebViewActivity", "[DEBUG] Download started: " + fileName);
     }
 
     // File result handling

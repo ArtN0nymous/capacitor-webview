@@ -195,16 +195,38 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
         if debug { print("[DEBUG] Navigating to: \(url.absoluteString)") }
 
-        if isDownloadableFile(url) {
-            if debug { print("[DEBUG] Detected downloadable file: \(url.lastPathComponent)") }
+        if shouldDownloadPdfFromURL(url) {
+            if debug { print("[DEBUG] PDF detectado por URL: \(url.absoluteString)") }
+            downloadPdf(from: url)
+            decisionHandler(.cancel)
+            return
+        }
+
+        if isDownloadableImage(url) {
+            if debug { print("[DEBUG] Imagen detectada: \(url.lastPathComponent)") }
             downloadFile(url)
             decisionHandler(.cancel)
             return
         }
 
-        if url.path.contains("/api/prescription-pdf") {
-            if debug { print("[DEBUG] URL detected as prescription PDF: \(url.absoluteString)") }
-            handlePrescriptionPdfDownload(webView: webView, url: url)
+        decisionHandler(.allow)
+    }
+
+    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+        guard navigationResponse.isForMainFrame,
+              let httpResponse = navigationResponse.response as? HTTPURLResponse,
+              let url = httpResponse.url else {
+            decisionHandler(.allow)
+            return
+        }
+
+        let mimeType = httpResponse.mimeType
+        let contentDisposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition")
+
+        if shouldDownloadPdf(url: url, mimeType: mimeType, contentDisposition: contentDisposition) {
+            if debug { print("[DEBUG] PDF detectado por respuesta HTTP: \(url.absoluteString)") }
+            let suggestedFilename = filenameFromContentDisposition(contentDisposition)
+            downloadPdf(from: url, suggestedFilename: suggestedFilename)
             decisionHandler(.cancel)
             return
         }
@@ -225,67 +247,125 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
     // MARK: - File Download Handling
 
-    func isDownloadableFile(_ url: URL) -> Bool {
-        if debug { print("[DEBUG] URL recibida en isDownloadableFile: \(url.absoluteString)") }
-        if debug { print("[DEBUG] lastPathComponent: \(url.lastPathComponent)") }
-        let ext = URL(fileURLWithPath: url.lastPathComponent).pathExtension.lowercased()
-        if debug { print("[DEBUG] Analizando extensión: \(ext)") }
-        let allowedExtensions = ["pdf", "jpeg", "jpg", "png"]
-        // También intenta detectar extensión en el query string
-        if ext.isEmpty, let extFromQuery = url.valueOf("name")?.split(separator: ".").last?.lowercased() {
-            if debug { print("[DEBUG] Extension detected in query: \(extFromQuery)") }
-            return allowedExtensions.contains(String(extFromQuery))
+    func shouldDownloadPdfFromURL(_ url: URL) -> Bool {
+        if fileExtension(from: url.lastPathComponent) == "pdf" { return true }
+
+        for queryKey in ["filename", "file", "name", "download"] {
+            if let value = url.valueOf(queryKey), fileExtension(from: value) == "pdf" {
+                return true
+            }
         }
-        return allowedExtensions.contains(ext)
+
+        return false
     }
 
-    func handlePrescriptionPdfDownload(webView: WKWebView, url: URL) {
-        if debug { print("[DEBUG] Starting prescription PDF download") }
+    func shouldDownloadPdf(url: URL, mimeType: String?, contentDisposition: String?) -> Bool {
+        if mimeType?.lowercased() == "application/pdf" { return true }
+        if shouldDownloadPdfFromURL(url) { return true }
+
+        if let disposition = contentDisposition?.lowercased() {
+            if disposition.contains("filename="),
+               let filename = filenameFromContentDisposition(contentDisposition),
+               filename.lowercased().hasSuffix(".pdf") {
+                return true
+            }
+            if disposition.contains("attachment"), mimeType?.lowercased() == "application/pdf" {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    func isDownloadableImage(_ url: URL) -> Bool {
+        let allowedExtensions = ["jpeg", "jpg", "png"]
+        let ext = fileExtension(from: url.lastPathComponent)
+        if allowedExtensions.contains(ext) { return true }
+
+        for queryKey in ["filename", "file", "name", "download"] {
+            if let value = url.valueOf(queryKey), allowedExtensions.contains(fileExtension(from: value)) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    func fileExtension(from filename: String) -> String {
+        URL(fileURLWithPath: filename).pathExtension.lowercased()
+    }
+
+    func filenameFromContentDisposition(_ contentDisposition: String?) -> String? {
+        guard let contentDisposition else { return nil }
+
+        let regex = try? NSRegularExpression(pattern: "filename\\*?=(?:UTF-8''|\"?)([^\";]+)", options: [.caseInsensitive])
+        let range = NSRange(location: 0, length: contentDisposition.utf16.count)
+        if let match = regex?.firstMatch(in: contentDisposition, options: [], range: range),
+           let filenameRange = Range(match.range(at: 1), in: contentDisposition) {
+            return String(contentDisposition[filenameRange]).removingPercentEncoding
+        }
+
+        return nil
+    }
+
+    func resolveFilename(for url: URL, httpResponse: HTTPURLResponse?, suggestedFilename: String?) -> String {
+        if let suggestedFilename, !suggestedFilename.isEmpty {
+            return suggestedFilename.lowercased().hasSuffix(".pdf") ? suggestedFilename : "\(suggestedFilename).pdf"
+        }
+
+        if let disposition = httpResponse?.value(forHTTPHeaderField: "Content-Disposition"),
+           let filename = filenameFromContentDisposition(disposition), !filename.isEmpty {
+            return filename.lowercased().hasSuffix(".pdf") ? filename : "\(filename).pdf"
+        }
+
+        for queryKey in ["filename", "file", "name", "download"] {
+            if let value = url.valueOf(queryKey), !value.isEmpty {
+                return value.lowercased().hasSuffix(".pdf") ? value : "\(value).pdf"
+            }
+        }
+
+        let lastPath = url.lastPathComponent
+        if !lastPath.isEmpty, lastPath != "/" {
+            return lastPath.lowercased().hasSuffix(".pdf") ? lastPath : "\(lastPath).pdf"
+        }
+
+        return "download.pdf"
+    }
+
+    func downloadPdf(from url: URL, suggestedFilename: String? = nil) {
+        if debug { print("[DEBUG] Iniciando descarga de PDF: \(url.absoluteString)") }
+
         let cookieStore = webView.configuration.websiteDataStore.httpCookieStore
         cookieStore.getAllCookies { cookies in
             var request = URLRequest(url: url)
-            let headers = HTTPCookie.requestHeaderFields(with: cookies)
-            request.allHTTPHeaderFields = headers
+            request.allHTTPHeaderFields = HTTPCookie.requestHeaderFields(with: cookies)
 
-            let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+            let task = URLSession.shared.dataTask(with: request) { data, response, error in
                 if let error = error {
-                    if self.debug { print("[ERROR] Error downloading prescription: \(error)") }
+                    if self.debug { print("[ERROR] Error descargando PDF: \(error)") }
                     return
                 }
 
                 guard let httpResponse = response as? HTTPURLResponse else {
-                    if self.debug { print("[ERROR] Invalid response") }
+                    if self.debug { print("[ERROR] Respuesta inválida") }
                     return
                 }
 
                 if self.debug { print("[DEBUG] HTTP status code: \(httpResponse.statusCode)") }
 
-                guard httpResponse.statusCode == 200, let data = data else {
-                    if self.debug { print("[ERROR] Invalid data or non-200 response") }
+                guard (200...299).contains(httpResponse.statusCode), let data = data else {
+                    if self.debug { print("[ERROR] Datos inválidos o respuesta no exitosa") }
                     return
                 }
 
-                var filename = "prescription.pdf"
-                if let disposition = httpResponse.allHeaderFields["Content-Disposition"] as? String {
-                    if self.debug { print("[DEBUG] Content-Disposition: \(disposition)") }
-                    // search for filename="something.pdf" or filename=something.pdf
-                    let regex = try? NSRegularExpression(pattern: "filename=\"?([^\";]+)\"?", options: [])
-                    if let match = regex?.firstMatch(in: disposition, options: [], range: NSRange(location: 0, length: disposition.utf16.count)),
-                       let range = Range(match.range(at: 1), in: disposition) {
-                        filename = String(disposition[range])
-                    }
-                }
+                let filename = self.resolveFilename(for: url, httpResponse: httpResponse, suggestedFilename: suggestedFilename)
+                if self.debug { print("[DEBUG] Nombre final del archivo: \(filename)") }
 
-                if !filename.lowercased().hasSuffix(".pdf") {
-                    filename += ".pdf"
-                }
-
-                if self.debug { print("[DEBUG] Final file name: \(filename)") }
                 if !data.starts(with: [0x25, 0x50, 0x44, 0x46]) {
-                    let snippet = String(data: data.prefix(200), encoding: .utf8) ?? "\(data.prefix(20))"
-                    if self.debug { print("[ERROR] First bytes of file: \(snippet)") }
+                    if self.debug { print("[ERROR] El archivo descargado no es un PDF válido") }
                     return
                 }
+
                 self.savePDF(data: data, filename: filename)
             }
 
@@ -315,30 +395,27 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
                 if self.debug { print("[DEBUG] HTTP status code: \(httpResponse.statusCode)") }
 
-                guard httpResponse.statusCode == 200, let data = data else {
+                guard (200...299).contains(httpResponse.statusCode), let data = data else {
                     if self.debug { print("[ERROR] Invalid data or non-200 response") }
                     return
                 }
 
                 var filename = url.lastPathComponent
-                var ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
-                // if the extension is empty, try to get it from the query parameters
-                if let nameParam = url.valueOf("name"), !nameParam.isEmpty {
-                    if self.debug { print("[DEBUG] Parámetro name encontrado: \(nameParam)") }
-                    filename = nameParam
-                    ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
-                }
-
-                // If the extension is still empty, try to get it from Content-Disposition header
-                if let disposition = httpResponse.allHeaderFields["Content-Disposition"] as? String {
-                    if self.debug { print("[DEBUG] Content-Disposition: \(disposition)") }
-                    let filenamePattern = "filename=\"?(.+?)\"?"
-                    if let range = disposition.range(of: filenamePattern, options: .regularExpression) {
-                        filename = String(disposition[range].dropFirst(9).dropLast())
-                        ext = URL(fileURLWithPath: filename).pathExtension.lowercased()
+                var ext = fileExtension(from: filename)
+                for queryKey in ["filename", "file", "name", "download"] {
+                    if let value = url.valueOf(queryKey), !value.isEmpty {
+                        filename = value
+                        ext = fileExtension(from: filename)
+                        break
                     }
                 }
-                // If the extension is still empty, default to .pdf
+
+                if let disposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition"),
+                   let dispositionFilename = filenameFromContentDisposition(disposition) {
+                    filename = dispositionFilename
+                    ext = fileExtension(from: filename)
+                }
+
                 if ext.isEmpty {
                     filename += ".pdf"
                 }
