@@ -1,6 +1,6 @@
 # Capacitor Custom Webview Plugin
 
-A Capacitor plugin to open a custom native WebView with navigation controls, file upload, download support, and network monitoring for both Android and iOS.
+A Capacitor 7 plugin to open a custom native WebView with navigation controls, file upload, PDF/image download, optional cookies and sessions, close events, and debug network logging for Android and iOS.
 
 ---
 
@@ -8,10 +8,13 @@ A Capacitor plugin to open a custom native WebView with navigation controls, fil
 
 - Open a native WebView from your Capacitor/Ionic app
 - Navigation controls: Back, Forward, Reload, Close
-- File upload (camera, gallery, files)
-- File download (with download manager on Android, QuickLook on iOS)
-- Network request monitoring (XHR/fetch logs)
-- Fullscreen modal presentation
+- **Close listener** (`webviewClosed`) when the user dismisses the webview
+- **Optional cookies and sessions** (`enableCookies`) for login, OAuth, and authenticated flows
+- **PDF download** by URL, `Content-Type`, or `Content-Disposition` (not limited to specific paths)
+- Image download and in-app preview (iOS QuickLook)
+- File upload (camera, gallery, files) on Android
+- Network request monitoring when `debug` is enabled (XHR/fetch logs)
+- Fullscreen modal presentation (iOS) / dedicated activity (Android)
 
 ---
 
@@ -22,6 +25,8 @@ npm install @artn0nymous/capacitor-webview
 npx cap sync
 ```
 
+**Requirements:** Capacitor 7+, JDK 21 for Android builds.
+
 ---
 
 ## Usage
@@ -29,117 +34,142 @@ npx cap sync
 ```typescript
 import { CustomWebview } from '@artn0nymous/capacitor-webview';
 
-// Open a webview with a given URL
-CustomWebview.openWebview({
+// Register the close listener before opening the webview
+const closeListener = await CustomWebview.addListener('webviewClosed', () => {
+  console.log('WebView closed');
+  // Refresh app state, navigate, etc.
+});
+
+await CustomWebview.openWebview({
   url: 'https://www.example.com',
-  debug: true // Optional: enables native network and event logging for debugging
+  debug: true,           // optional: native network/event logs
+  enableCookies: true,   // optional: persistent cookies & session (login/OAuth)
+});
+
+// Optional: remove listener when no longer needed
+await closeListener.remove();
+```
+
+### Login or OAuth flows
+
+Enable cookies so redirects can set session cookies and later requests stay authenticated:
+
+```typescript
+await CustomWebview.openWebview({
+  url: 'https://your-api.com/auth/start',
+  enableCookies: true,
 });
 ```
 
+When `enableCookies` is `false` (default), the webview uses an isolated session (iOS non-persistent store; Android without third-party cookies / DOM storage).
+
 ---
 
-## Android Setup
+## API
 
-### 1. Declare Permissions (Optional)
+### `openWebview(options): Promise<void>`
 
-**Only add the permissions you actually need.**  
-For example, if your web content does not use the camera, microphone, or file upload, you do **not** need to declare those permissions.
+Opens the native WebView.
 
-Add the following permissions to your app's `android/app/src/main/AndroidManifest.xml` **only if your use case requires them**:
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `url` | `string` | — | **Required.** URL to load. |
+| `debug` | `boolean` | `false` | Enables native logging of navigation and network events. |
+| `enableCookies` | `boolean` | `false` | Enables persistent cookies, shared cookie jar, and session storage. Use for login/OAuth. |
+
+### `addListener('webviewClosed', listener): Promise<PluginListenerHandle>`
+
+Fired when the webview is closed (close button or dismiss). Register **before** calling `openWebview`.
+
+### `removeAllListeners(): Promise<void>`
+
+Removes all plugin listeners.
+
+---
+
+## PDF and file downloads
+
+The plugin intercepts PDFs when:
+
+- The URL ends with `.pdf` or includes a PDF filename in query params (`filename`, `file`, `name`, `download`)
+- The server responds with `Content-Type: application/pdf`
+- The response includes `Content-Disposition` with a `.pdf` filename
+
+- **iOS:** downloads with session cookies, validates PDF content, opens QuickLook preview
+- **Android:** uses the system Download Manager (saved to Downloads)
+
+---
+
+## Android setup
+
+### Permissions (optional)
+
+Add only what your web content needs in `android/app/src/main/AndroidManifest.xml`:
 
 ```xml
-<!-- Required for all web content -->
 <uses-permission android:name="android.permission.INTERNET" />
 
-<!-- Only if you use file upload or camera/microphone in your webview -->
+<!-- File upload / camera / microphone only if required -->
 <uses-permission android:name="android.permission.CAMERA" />
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 ```
 
-> **Note:**  
-> If you target Android 13+ (API 33+), you may need to request permissions at runtime for file/camera/microphone access.
+### Activity declaration
 
-### 2. Activity Declaration
-
-If not already present, ensure the following activity is declared in your `AndroidManifest.xml`:
+The plugin registers `CustomWebViewActivity` in its own manifest. If you use a custom manifest merge, ensure this activity is available:
 
 ```xml
 <activity
     android:name="com.webview.capacitor.custom.CustomWebViewActivity"
+    android:exported="false"
     android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar" />
 ```
 
 ---
 
-## iOS Setup
+## iOS setup
 
-### 1. Declare Permissions (Optional)
+### Info.plist (optional)
 
-**Only add the Info.plist keys you actually need.**  
-For example, if your web content does not use the camera, microphone, or file upload, you do **not** need to declare those keys.
-
-Add the following keys to your app's `ios/App/App/Info.plist` **only if your use case requires them**:
+Add only the keys your web content needs in `ios/App/App/Info.plist`:
 
 ```xml
-<!-- Required only if your webview uses camera -->
 <key>NSCameraUsageDescription</key>
 <string>Camera access is required for file uploads and video calls.</string>
-<!-- Required only if your webview uses microphone -->
 <key>NSMicrophoneUsageDescription</key>
 <string>Microphone access is required for video calls.</string>
-<!-- Required only if your webview uses photo library/file upload -->
 <key>NSPhotoLibraryUsageDescription</key>
 <string>Photo library access is required for file uploads.</string>
 ```
 
 ---
 
-## Permissions Summary
+## Permissions summary
 
-| Feature         | Android Permission(s)                        | iOS Info.plist Key(s)                  |
-|-----------------|---------------------------------------------|----------------------------------------|
-| WebView         | INTERNET                                    | (none)                                 |
-| File Upload     | CAMERA, RECORD_AUDIO, READ/WRITE_EXTERNAL   | NSCameraUsageDescription, NSPhotoLibraryUsageDescription |
-| File Download   | READ/WRITE_EXTERNAL_STORAGE                 | (none, handled by QuickLook)           |
-| Microphone      | RECORD_AUDIO                                | NSMicrophoneUsageDescription           |
-
-> **Only add the permissions relevant to your app's needs.**
+| Feature | Android | iOS |
+|---------|---------|-----|
+| WebView | `INTERNET` | — |
+| File upload | `CAMERA`, `RECORD_AUDIO`, storage | Camera / mic / photo library usage descriptions |
+| File download | Storage (Downloads folder) | QuickLook (in-app) |
+| Cookies / session | `enableCookies: true` | `enableCookies: true` |
 
 ---
 
-## Example
+## Changelog
 
-```typescript
-CustomWebview.openWebview({
-  url: 'https://your-site.com'
-});
-```
+### 1.1.0
 
----
+- `webviewClosed` listener when the webview is dismissed
+- `enableCookies` option for sessions and OAuth
+- Generic PDF detection (URL, `Content-Type`, `Content-Disposition`)
+- iOS: `CapacitorWebview.podspec` naming fix
+- Android: toolbar icon visibility fix
 
-## Notes
+### 1.0.7
 
-- The plugin opens a fullscreen modal WebView with navigation controls.
-- Downloads on Android are saved to the public Downloads folder; on iOS, PDFs/images are previewed in-app.
-
----
-
-## API
-
-### `openWebview(options: { url: string, debug?: boolean }): Promise<void>`
-
-Opens a native WebView with the specified URL.
-
-- `url` (**string**, required): The URL to load.
-- `debug` (**boolean**, optional): If `true`, enables native logging of network requests and events (useful for debugging).
-
-#### Example
-
-```typescript
-await CustomWebview.openWebview({ url: 'https://www.example.com', debug: true });
-```
+- Initial public release
 
 ---
 
