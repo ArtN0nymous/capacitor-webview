@@ -117,6 +117,13 @@ esac
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
+# Use java.home from local.properties when JAVA_HOME is not set (Capacitor 7 requires JDK 21)
+if [ -z "$JAVA_HOME" ] && [ -f "$APP_HOME/local.properties" ]; then
+    JAVA_HOME_PROP=$(grep '^java.home=' "$APP_HOME/local.properties" | cut -d'=' -f2-)
+    if [ -n "$JAVA_HOME_PROP" ] && [ -d "$JAVA_HOME_PROP" ]; then
+        export JAVA_HOME="$JAVA_HOME_PROP"
+    fi
+fi
 
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then

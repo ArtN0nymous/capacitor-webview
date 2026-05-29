@@ -382,7 +382,7 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
             let headers = HTTPCookie.requestHeaderFields(with: cookies)
             request.allHTTPHeaderFields = headers
 
-            let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            let task = URLSession.shared.dataTask(with: request) { [self] data, response, error in
                 if let error = error {
                     if self.debug { print("[ERROR] Error in direct download: \(error)") }
                     return
@@ -401,19 +401,19 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
                 }
 
                 var filename = url.lastPathComponent
-                var ext = fileExtension(from: filename)
+                var ext = self.fileExtension(from: filename)
                 for queryKey in ["filename", "file", "name", "download"] {
                     if let value = url.valueOf(queryKey), !value.isEmpty {
                         filename = value
-                        ext = fileExtension(from: filename)
+                        ext = self.fileExtension(from: filename)
                         break
                     }
                 }
 
                 if let disposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition"),
-                   let dispositionFilename = filenameFromContentDisposition(disposition) {
+                   let dispositionFilename = self.filenameFromContentDisposition(disposition) {
                     filename = dispositionFilename
-                    ext = fileExtension(from: filename)
+                    ext = self.fileExtension(from: filename)
                 }
 
                 if ext.isEmpty {
