@@ -10,6 +10,7 @@ A Capacitor 7 plugin to open a custom native WebView with navigation controls, f
 - Navigation controls: Back, Forward, Reload, Close
 - **Close listener** (`webviewClosed`) when the user dismisses the webview
 - **Optional cookies and sessions** (`enableCookies`) for login, OAuth, and authenticated flows
+- **Geolocation** for web pages using `navigator.geolocation` (native permission + WebView bridge)
 - **PDF download** by URL, `Content-Type`, or `Content-Disposition` (not limited to specific paths)
 - Image download and in-app preview (iOS QuickLook)
 - File upload (camera, gallery, files) on Android
@@ -67,6 +68,32 @@ await CustomWebview.openWebview({
 ```
 
 When `enableCookies` is `false` (default), the webview uses an isolated session (iOS non-persistent store; Android without third-party cookies / DOM storage).
+
+### Geolocation
+
+Web pages that call `navigator.geolocation` need the native WebView to bridge location access. Without it, `getCurrentPosition` typically times out (~12 s on Android) even when the host app has location permission.
+
+**What the plugin handles:**
+
+- Requests native location permission when the WebView opens (Android runtime dialog; iOS `CLLocationManager` before the first load).
+- Enables geolocation in WebView settings (Android).
+- Bridges WebView geolocation prompts: `onGeolocationPermissionsShowPrompt` (Android) and `requestGeolocationPermissionFor` (iOS 15+).
+
+**What the host app developer must configure:**
+
+| Platform | Developer responsibility |
+|----------|-------------------------|
+| **Both** | Load **HTTPS** URLs when the page uses geolocation (secure context). |
+| **Both** | Pass `enableCookies: true` if authenticated pages need session cookies after redirects. |
+| **Android** | Add `ACCESS_FINE_LOCATION` and/or `ACCESS_COARSE_LOCATION` in the **host app** manifest if web content uses geolocation. Runtime prompt uses the system default text. |
+| **iOS** | Add `NSLocationWhenInUseUsageDescription` in the **host app** `Info.plist` with a string that explains **your** use case. iOS reads this at install time — the plugin cannot set or override it. Without this key, location is denied silently. |
+
+```typescript
+await CustomWebview.openWebview({
+  url: 'https://your-app.com/page-that-needs-location',
+  enableCookies: true, // if the page needs session cookies
+});
+```
 
 ### One-time links and screen rotation (Android)
 
@@ -133,6 +160,10 @@ Add only what your web content needs in `android/app/src/main/AndroidManifest.xm
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 
+<!-- Geolocation (navigator.geolocation in web content) -->
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
 <!-- File upload / camera / microphone only if required -->
 <uses-permission android:name="android.permission.CAMERA" />
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -158,11 +189,16 @@ The plugin registers `CustomWebViewActivity` in its own manifest (theme, orienta
 
 ## iOS setup
 
-### Info.plist (optional)
+### Info.plist (host app)
 
-Add only the keys your web content needs in `ios/App/App/Info.plist`:
+Permission usage descriptions are **not** defined by the plugin. Add only the keys your web content needs in `ios/App/App/Info.plist`, with text appropriate for **your** app:
 
 ```xml
+<!-- Required if web content uses navigator.geolocation -->
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>Your explanation of why location access is needed.</string>
+
+<!-- Only if required by your web content -->
 <key>NSCameraUsageDescription</key>
 <string>Camera access is required for file uploads and video calls.</string>
 <key>NSMicrophoneUsageDescription</key>
@@ -171,6 +207,8 @@ Add only the keys your web content needs in `ios/App/App/Info.plist`:
 <string>Photo library access is required for file uploads.</string>
 ```
 
+> **Note:** `NSLocationWhenInUseUsageDescription` is read from the host app bundle. The plugin requests authorization and bridges WebView prompts, but cannot supply the user-facing rationale — each integrating app must provide its own string.
+
 ---
 
 ## Permissions summary
@@ -178,6 +216,7 @@ Add only the keys your web content needs in `ios/App/App/Info.plist`:
 | Feature | Android | iOS |
 |---------|---------|-----|
 | WebView | `INTERNET` | — |
+| Geolocation | `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION` (**host app** manifest + runtime) | `NSLocationWhenInUseUsageDescription` (**host app** defines the string) |
 | File upload | `CAMERA`, `RECORD_AUDIO`, storage | Camera / mic / photo library usage descriptions |
 | File download | Storage (Downloads folder) | QuickLook (in-app) |
 | Cookies / session | `enableCookies: true` | `enableCookies: true` |
@@ -186,6 +225,13 @@ Add only the keys your web content needs in `ios/App/App/Info.plist`:
 ---
 
 ## Changelog
+
+### Unreleased
+
+- Geolocation support: native location permission + WebView bridge on Android and iOS 15+
+- Android: `setGeolocationEnabled`, `onGeolocationPermissionsShowPrompt` (host app must declare location permissions)
+- iOS: `CLLocationManager` pre-authorization before load, `requestGeolocationPermissionFor` delegate
+- Debug warning when loading HTTP URLs (geolocation requires HTTPS)
 
 ### 1.1.3
 

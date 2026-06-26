@@ -1,8 +1,9 @@
 import UIKit
 import WebKit
 import QuickLook
+import CoreLocation
 
-class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, QLPreviewControllerDataSource, WKScriptMessageHandler {
+class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUIDelegate, QLPreviewControllerDataSource, WKScriptMessageHandler, CLLocationManagerDelegate {
     var url: URL
     var webView: WKWebView!
     var lastDownloadedPDFURL: URL?
@@ -11,6 +12,8 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
     var fullscreen: Bool = false
     var onClose: (() -> Void)?
     private var didNotifyClose = false
+    private var locationManager: CLLocationManager?
+    private var didLoadInitialUrl = false
 
     init(url: URL, debug: Bool = false, enableCookies: Bool = false, fullscreen: Bool = false) {
         self.url = url
@@ -110,7 +113,10 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
         ])
 
         if debug { print("[DEBUG] Cargando WebView con URL: \(url.absoluteString)") }
-        webView.load(URLRequest(url: url))
+        if debug && url.scheme?.lowercased() == "http" {
+            print("[DEBUG] URL uses HTTP — navigator.geolocation requires HTTPS")
+        }
+        requestLocationAuthorizationAndLoad()
 
         if fullscreen {
             setNeedsStatusBarAppearanceUpdate()
@@ -192,6 +198,40 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
 
     @objc func reloadWebview() {
         webView.reload()
+    }
+
+    private func currentLocationAuthorizationStatus() -> CLAuthorizationStatus {
+        if #available(iOS 14.0, *) {
+            return locationManager?.authorizationStatus ?? CLLocationManager().authorizationStatus
+        }
+        return CLLocationManager.authorizationStatus()
+    }
+
+    private func requestLocationAuthorizationAndLoad() {
+        let manager = CLLocationManager()
+        manager.delegate = self
+        locationManager = manager
+
+        switch currentLocationAuthorizationStatus() {
+        case .notDetermined:
+            manager.requestWhenInUseAuthorization()
+        default:
+            loadInitialUrlIfNeeded()
+        }
+    }
+
+    private func loadInitialUrlIfNeeded() {
+        guard !didLoadInitialUrl else { return }
+        didLoadInitialUrl = true
+        webView.load(URLRequest(url: url))
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        loadInitialUrlIfNeeded()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        loadInitialUrlIfNeeded()
     }
 
     // MARK: - WKNavigationDelegate
@@ -494,6 +534,27 @@ class CustomWebviewViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     // MARK: - WKUIDelegate
+
+    @available(iOS 15.0, *)
+    func webView(
+        _ webView: WKWebView,
+        requestGeolocationPermissionFor origin: WKSecurityOrigin,
+        initiatedByFrame frame: WKFrameInfo,
+        decisionHandler: @escaping (WKPermissionDecision) -> Void
+    ) {
+        switch currentLocationAuthorizationStatus() {
+        case .authorizedAlways, .authorizedWhenInUse:
+            decisionHandler(.grant)
+        case .notDetermined:
+            locationManager?.requestWhenInUseAuthorization()
+            decisionHandler(.prompt)
+        default:
+            if debug {
+                print("[DEBUG] Location permission denied — geolocation unavailable for \(origin.host ?? origin.protocol)")
+            }
+            decisionHandler(.deny)
+        }
+    }
 
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let url = navigationAction.request.url {

@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
@@ -43,7 +44,10 @@ public class CustomWebViewActivity extends AppCompatActivity {
     public static final String EXTRA_FULLSCREEN = "fullscreen";
     private static final int CAMERA_AND_MICROPHONE_PERMISSION_CODE = 1;
     private static final int FILE_CHOOSER_REQUEST_CODE = 2;
+    private static final int LOCATION_PERMISSION_CODE = 3;
     private WebView webView;
+    private GeolocationPermissions.Callback pendingGeolocationCallback;
+    private String pendingGeolocationOrigin;
     private ValueCallback<Uri[]> mUploadMessage;
     private boolean debug = false;
     private boolean enableCookies = false;
@@ -97,11 +101,16 @@ public class CustomWebViewActivity extends AppCompatActivity {
 
         String url = getIntent().getStringExtra(EXTRA_URL);
         configureWebView();
+        ensureLocationPermission();
 
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState);
             if (debug) Log.d("CustomWebViewActivity", "[DEBUG] Restored WebView state");
         } else if (url != null && !url.isEmpty()) {
+            if (debug && url.startsWith("http://")) {
+                Log.w("CustomWebViewActivity",
+                        "[DEBUG] URL uses HTTP — navigator.geolocation requires HTTPS");
+            }
             webView.loadUrl(url);
         }
     }
@@ -160,6 +169,8 @@ public class CustomWebViewActivity extends AppCompatActivity {
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setGeolocationEnabled(true);
+        settings.setGeolocationDatabasePath(getFilesDir().getPath());
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -227,6 +238,21 @@ public class CustomWebViewActivity extends AppCompatActivity {
                 } else {
                     requestCameraAndMicrophonePermission();
                 }
+            }
+
+            @Override
+            public void onGeolocationPermissionsShowPrompt(
+                    String origin,
+                    GeolocationPermissions.Callback callback
+            ) {
+                if (hasLocationPermission()) {
+                    callback.invoke(origin, true, false);
+                    return;
+                }
+
+                pendingGeolocationCallback = callback;
+                pendingGeolocationOrigin = origin;
+                requestLocationPermission();
             }
 
             @Override
@@ -379,6 +405,38 @@ public class CustomWebViewActivity extends AppCompatActivity {
         ActivityCompat.requestPermissions(this, permissions, CAMERA_AND_MICROPHONE_PERMISSION_CODE);
     }
 
+    private boolean hasLocationPermission() {
+        return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void ensureLocationPermission() {
+        if (!hasLocationPermission()) {
+            requestLocationPermission();
+        }
+    }
+
+    private void requestLocationPermission() {
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                },
+                LOCATION_PERMISSION_CODE
+        );
+    }
+
+    private void resolvePendingGeolocationPermission(boolean granted) {
+        if (pendingGeolocationCallback == null) {
+            return;
+        }
+
+        pendingGeolocationCallback.invoke(pendingGeolocationOrigin, granted, false);
+        pendingGeolocationCallback = null;
+        pendingGeolocationOrigin = null;
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -388,6 +446,16 @@ public class CustomWebViewActivity extends AppCompatActivity {
                 webView.reload();
             } else {
                 Toast.makeText(this, "Camera and microphone permissions are required", Toast.LENGTH_SHORT).show();
+            }
+            return;
+        }
+
+        if (requestCode == LOCATION_PERMISSION_CODE) {
+            boolean granted = grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            resolvePendingGeolocationPermission(granted);
+            if (!granted && debug) {
+                Log.w("CustomWebViewActivity", "[DEBUG] Location permission denied — geolocation unavailable");
             }
         }
     }
