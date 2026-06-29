@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" dir="ltr" class="hydrated">
+<html lang="es" dir="ltr" class="hydrated">
   <head>
     <meta charset="UTF-8" />
     <title>Example Capacitor App</title>
@@ -12,7 +12,7 @@
       main {
         font-family: system-ui, sans-serif;
         padding: 1.5rem;
-        max-width: 480px;
+        max-width: 560px;
       }
       label {
         display: block;
@@ -26,32 +26,73 @@
         box-sizing: border-box;
       }
       button {
-        margin-top: 1rem;
-        padding: 0.75rem 1.25rem;
-        font-size: 1rem;
+        margin-top: 0.75rem;
+        margin-right: 0.5rem;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
       }
       #status {
         margin-top: 1rem;
         color: #333;
+      }
+      .hint {
+        margin-top: 1.25rem;
+        padding: 1rem;
+        background: #f6f8fa;
+        border-radius: 8px;
+        font-size: 0.9rem;
+      }
+      .hint ol {
+        margin: 0.5rem 0 0;
+        padding-left: 1.25rem;
+      }
+      code {
+        font-size: 0.85em;
       }
     </style>
   </head>
   <body>
     <main>
       <h1>Custom Webview Plugin</h1>
-      <p>Prueba local del plugin <code>capacitor-webview</code>.</p>
+      <p>App de prueba local del plugin <code>capacitor-webview</code>.</p>
 
-      <label for="urlInput">URL</label>
-      <input type="text" id="urlInput" name="urlInput" value="https://example.com" />
+      <label for="urlInput">URL del WebView</label>
+      <input
+        type="text"
+        id="urlInput"
+        name="urlInput"
+        value="https://browserleaks.com/geo"
+      />
+
+      <div class="row">
+        <button type="button" onclick="setPreset('public')">Preset: test público</button>
+        <button type="button" onclick="setPreset('local')">Preset: test local (HTTPS)</button>
+      </div>
 
       <label>
         <input type="checkbox" id="enableCookies" />
         enableCookies (sesión / OAuth)
       </label>
 
-      <button onclick="openTestWebview()">Abrir WebView</button>
+      <button type="button" onclick="openTestWebview()">Abrir WebView</button>
 
       <p id="status">Listo</p>
+
+      <div class="hint">
+        <strong>Probar geolocalización</strong>
+        <ol>
+          <li>En la raíz del repo: <code>npm run build</code></li>
+          <li>Aquí: <code>npm run android</code> o <code>npm run ios</code></li>
+          <li>Usa el preset <em>test público</em> o sirve <code>geolocation-test.html</code> por HTTPS (ngrok)</li>
+          <li>Con <code>debug: true</code> revisa Logcat (Android) o Xcode console (iOS)</li>
+        </ol>
+      </div>
     </main>
 
     <script src="./js/example.js" type="module"></script>

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Geolocation test — capacitor-webview</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 1.25rem;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.5rem;
+      }
+      button {
+        margin: 0.75rem 0;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 1rem;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .ok {
+        color: #0a7a2f;
+      }
+      .err {
+        color: #b00020;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Geolocation test</h1>
+    <p>Página mínima para probar <code>navigator.geolocation</code> dentro del WebView nativo.</p>
+    <button id="runBtn" type="button">Obtener ubicación</button>
+    <pre id="output">Pulsa el botón o espera la prueba automática…</pre>
+
+    <script>
+      const output = document.getElementById('output');
+      const runBtn = document.getElementById('runBtn');
+
+      function log(message, isError) {
+        output.textContent = message;
+        output.className = isError ? 'err' : 'ok';
+      }
+
+      function runTest() {
+        if (!window.isSecureContext) {
+          log(
+            'ERROR: contexto no seguro. La URL debe ser HTTPS (http:// falla en WebView).',
+            true
+          );
+          return;
+        }
+
+        if (!navigator.geolocation) {
+          log('ERROR: navigator.geolocation no está disponible.', true);
+          return;
+        }
+
+        log('Solicitando ubicación (timeout 15 s)…', false);
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            log(
+              JSON.stringify(
+                {
+                  status: 'ok',
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                  accuracy: position.coords.accuracy,
+                  timestamp: position.timestamp,
+                },
+                null,
+                2
+              ),
+              false
+            );
+          },
+          (error) => {
+            log(
+              JSON.stringify(
+                {
+                  status: 'error',
+                  code: error.code,
+                  message: error.message,
+                  hint:
+                    error.code === 3
+                      ? 'Timeout (~12–15 s): suele indicar que el WebView no recibió permiso nativo.'
+                      : undefined,
+                },
+                null,
+                2
+              ),
+              true
+            );
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      }
+
+      runBtn.addEventListener('click', runTest);
+      runTest();
+    </script>
+  </body>
+</html>
